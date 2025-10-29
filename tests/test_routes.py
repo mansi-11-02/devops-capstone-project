@@ -124,3 +124,85 @@ class TestAccountService(TestCase):
         self.assertEqual(response.status_code, status.HTTP_415_UNSUPPORTED_MEDIA_TYPE)
 
     # ADD YOUR TEST CASES HERE ...
+    def test_get_account(self):
+        """It should Read a single Account"""
+        account = self._create_accounts(1)[0]
+        resp = self.client.get(
+            f"{BASE_URL}/{account.id}", content_type="application/json"
+        )
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        data = resp.get_json()
+        self.assertEqual(data["name"], account.name)
+
+    def test_get_account_not_found(self):
+        """It should not Read an Account that is not found"""
+        resp = self.client.get(f"{BASE_URL}/0")
+        self.assertEqual(resp.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_get_account_list(self):
+        """It should return a list of Accounts"""
+        self._create_accounts(5)
+        resp = self.client.get(BASE_URL)
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        data = resp.get_json()
+        self.assertEqual(len(data), 5)
+
+    def test_get_account_list_empty(self):
+        """It should return an empty list when no accounts exist"""
+        resp = self.client.get(BASE_URL)
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        data = resp.get_json()
+        self.assertEqual(data, [])
+    
+    def test_update_account(self):
+        """It should Update an existing Account"""
+        account = self._create_accounts(1)[0]
+        new_account = {
+            "name": "Updated Name",
+            "email": "updated@example.com",
+            "phone_number": "1234567890",
+            "disabled": False,
+            "address": "456 New Street",
+            "date_joined": str(account.date_joined)  # or a valid ISO date string
+        }
+        resp = self.client.put(
+            f"{BASE_URL}/{account.id}",
+            json=new_account,
+            content_type="application/json"
+        )
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        data = resp.get_json()
+        self.assertEqual(new_account["name"], data["name"])
+        self.assertEqual(new_account["email"], data["email"])
+        self.assertEqual(new_account["address"], data["address"])
+        self.assertEqual(new_account["phone_number"], data["phone_number"])
+        self.assertEqual(new_account["date_joined"], data["date_joined"])
+    
+    def test_update_account_not_found(self):
+        """It should not Update an Account that does not exist"""
+        new_account = {
+            "name": "Ghost",
+            "email": "ghost@example.com",
+            "phone_number": "0000000000",
+            "address": "Unknown Street",
+            "date_joined": "2025-01-01",
+            "disabled": True
+        }
+        resp = self.client.put(f"{BASE_URL}/0", json=new_account)
+        self.assertEqual(resp.status_code, status.HTTP_404_NOT_FOUND)
+    
+    def test_delete_account(self):
+        """It should Delete an Account"""
+        account = self._create_accounts(1)[0]
+        resp = self.client.delete(f"{BASE_URL}/{account.id}")
+        self.assertEqual(resp.status_code, status.HTTP_204_NO_CONTENT)
+
+    def test_delete_account_not_found(self):
+        """It should not fail when deleting an Account that does not exist"""
+        resp = self.client.delete(f"{BASE_URL}/0")
+        self.assertEqual(resp.status_code, status.HTTP_204_NO_CONTENT)
+
+    def test_method_not_allowed(self):
+        """It should not allow an illegal method call"""
+        resp = self.client.delete(BASE_URL)
+        self.assertEqual(resp.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
